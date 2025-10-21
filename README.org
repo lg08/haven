@@ -1,0 +1,20 @@
+* Haven
+
+This repository contains the source code for an opinionated encrypted messaging library
+using [[https://messaginglayersecurity.rocks/][MLS]] as the E2E encryption primitive, Sqlite as the local storage provider,
+[[https://docs.bsky.app/][Bluesky]] as the identity provider, and decentralized personal data stores as the
+delivery service.
+
+It defines its own application-layer protocol on top of MLS that is
+designed to be sensible and ready to integrate into other systems.
+
+** Architecture
+
+- All local state will be stored in a sqlite database.
+- We will use people's PDS's as the backend for storing their [[https://www.rfc-editor.org/rfc/rfc9420.html#name-key-packages][KeyPackages]]. This
+  will be using a custom Lexicon that is still TBD.
+- We will
+
+** Tasks
+
+*** TODO Create lexicon to hold keypackages.

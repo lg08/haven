@@ -1,0 +1,3 @@
+* Sqlite Storage
+
+NOTE: this crate was forked from https://github.com/openmls/openmls/blob/main/sqlite_storage/README.md
