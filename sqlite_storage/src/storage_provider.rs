@@ -1,13 +1,6 @@
-use std::{
-    borrow::{Borrow, BorrowMut},
-    marker::PhantomData,
-};
-
-use openmls_traits::storage::{traits, Key, StorageProvider};
-use rusqlite::Connection;
-
 use crate::{
     codec::Codec,
+    db_connection::DbConnection,
     encryption_key_pairs::{
         StorableEncryptionKeyPair, StorableEncryptionKeyPairRef, StorableEncryptionPublicKeyRef,
     },
@@ -22,36 +15,29 @@ use crate::{
     },
     STORAGE_PROVIDER_VERSION,
 };
+use openmls_traits::storage::{traits, Key, StorageProvider};
+use rusqlite::Connection;
+use std::{
+    borrow::{Borrow, BorrowMut},
+    marker::PhantomData,
+};
 
 refinery::embed_migrations!("migrations");
 
 /// Storage provider for OpenMLS using Sqlite through the `rusqlite` crate.
 /// Implements the [`StorageProvider`] trait. The codec used by the storage
 /// provider is set by the generic parameter `C`.
-pub struct SqliteStorageProvider<C: Codec, ConnectionRef: Borrow<Connection>> {
-    connection: ConnectionRef,
-    _codec: PhantomData<C>,
+pub struct SqliteStorageProvider<'conn, C: Codec> {
+    pub connection: DbConnection<'conn>,
+    pub _codec: PhantomData<C>,
 }
 
-impl<C: Codec, ConnectionRef: Borrow<Connection>> SqliteStorageProvider<C, ConnectionRef> {
-    /// Create a new instance of the [`SqliteStorageProvider`].
-    pub fn new(connection: ConnectionRef) -> Self {
-        Self {
-            connection,
+impl<'conn, C: Codec> SqliteStorageProvider<'conn, C> {
+    pub fn new(db_connection: DbConnection<'conn>) -> Self {
+        SqliteStorageProvider {
+            connection: db_connection,
             _codec: PhantomData,
         }
-    }
-}
-
-impl<C: Codec, ConnectionRef: BorrowMut<Connection>> SqliteStorageProvider<C, ConnectionRef> {
-    /// Initialize the database with the necessary tables.
-    ///
-    /// This method is deprecated and replaced by `run_migrations`, which
-    /// specifies a unique name for the refinery migration table.
-    #[deprecated(since = "0.2.0", note = "use `run_migrations()` instead")]
-    pub fn initialize(&mut self) -> Result<(), refinery::Error> {
-        migrations::runner().run(self.connection.borrow_mut())?;
-        Ok(())
     }
 
     /// Initialize the database with the necessary tables.
@@ -59,15 +45,20 @@ impl<C: Codec, ConnectionRef: BorrowMut<Connection>> SqliteStorageProvider<C, Co
         let mut runner = migrations::runner();
         runner.set_migration_table_name("openmls_sqlite_storage_migrations");
 
-        runner.run(self.connection.borrow_mut())?;
+        let conn_mut = self.connection.as_connection_mut().expect(
+            "Error while
+        getting connection",
+        );
+        // .map_err(|_| refinery::Error::ne)?;
+        runner.run(conn_mut)?;
         Ok(())
     }
 }
 
 pub(super) struct StorableGroupIdRef<'a, GroupId: Key<STORAGE_PROVIDER_VERSION>>(pub &'a GroupId);
 
-impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVIDER_VERSION>
-    for SqliteStorageProvider<C, ConnectionRef>
+impl<'conn, C: Codec> StorageProvider<STORAGE_PROVIDER_VERSION>
+    for SqliteStorageProvider<'conn, C>
 {
     type Error = rusqlite::Error;
 

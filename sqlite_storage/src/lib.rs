@@ -28,7 +28,7 @@ use openmls_traits::storage::StorageProvider;
 use serde::{de::DeserializeOwned, Serialize};
 
 mod codec;
-mod db_connection;
+pub mod db_connection;
 mod encryption_key_pairs;
 mod epoch_key_pairs;
 mod error;

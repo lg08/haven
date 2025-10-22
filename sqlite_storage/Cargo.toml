@@ -16,6 +16,7 @@ log = { version = "0.4" }
 rusqlite = { version = "0.32", features = ["bundled"] }
 refinery = { version = "0.8", features = ["rusqlite", "enums"] }
 openmls_traits = "0.4.1"
+refinery-core = "0.9.0"
 
 [dev-dependencies]
 serde_json = { version = "1.0" }

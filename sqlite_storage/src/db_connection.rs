@@ -1,5 +1,5 @@
 use crate::error::Error;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 
 #[derive(Debug)]
 pub struct DbConnection<'conn> {
@@ -15,7 +15,6 @@ enum UnderlyingDbConnection<'conn> {
 // Implement Deref to expose &Connection methods
 impl<'conn> Deref for UnderlyingDbConnection<'conn> {
     type Target = rusqlite::Connection;
-
     fn deref(&self) -> &Self::Target {
         match self {
             UnderlyingDbConnection::Connection(conn) => conn,
@@ -26,24 +25,43 @@ impl<'conn> Deref for UnderlyingDbConnection<'conn> {
 
 impl<'conn> Deref for DbConnection<'conn> {
     type Target = rusqlite::Connection;
-
     fn deref(&self) -> &Self::Target {
         &self.connection
     }
 }
 
 impl DbConnection<'_> {
-    // Now all these methods become trivial!
-    pub fn execute<P: rusqlite::Params>(&self, sql: &str, params: P) -> Result<usize, Error> {
-        self.connection
-            .execute(sql, params)
-            .map_err(|e| Error::DatabaseError(e.to_string()))
+    pub fn new<'conn>(connection: rusqlite::Connection) -> DbConnection<'conn> {
+        DbConnection {
+            connection: UnderlyingDbConnection::Connection(connection),
+        }
     }
 
-    pub fn execute_batch(&self, sql: &str) -> Result<(), Error> {
-        self.connection
-            .execute_batch(sql)
-            .map_err(|e| Error::DatabaseError(e.to_string()))
+    /// Get a mutable reference to the underlying Connection.
+    /// Note: This only works when not in a savepoint/transaction.
+    pub fn as_connection_mut(&mut self) -> Result<&mut rusqlite::Connection, Error> {
+        match &mut self.connection {
+            UnderlyingDbConnection::Connection(conn) => Ok(conn),
+            UnderlyingDbConnection::Savepoint(_) => Err(Error::DatabaseError(
+                "Cannot get mutable connection reference while in a transaction".to_string(),
+            )),
+        }
+    }
+
+    pub fn execute<P: rusqlite::Params>(&mut self, sql: &str, params: P) -> Result<usize, Error> {
+        match &mut self.connection {
+            UnderlyingDbConnection::Connection(conn) => conn.execute(sql, params),
+            UnderlyingDbConnection::Savepoint(sp) => sp.execute(sql, params),
+        }
+        .map_err(|e| Error::DatabaseError(e.to_string()))
+    }
+
+    pub fn execute_batch(&mut self, sql: &str) -> Result<(), Error> {
+        match &mut self.connection {
+            UnderlyingDbConnection::Connection(conn) => conn.execute_batch(sql),
+            UnderlyingDbConnection::Savepoint(sp) => sp.execute_batch(sql),
+        }
+        .map_err(|e| Error::DatabaseError(e.to_string()))
     }
 
     pub fn query_row<T, P, F>(&self, sql: &str, params: P, f: F) -> Result<T, Error>
@@ -56,17 +74,18 @@ impl DbConnection<'_> {
             .map_err(|e| Error::DatabaseError(e.to_string()))
     }
 
-    pub fn prepare(&self, sql: &str) -> Result<rusqlite::Statement<'_>, Error> {
-        self.connection
-            .prepare(sql)
-            .map_err(|_| Error::DatabaseError("Error preparing db connection.".to_string()))
+    pub fn prepare(&mut self, sql: &str) -> Result<rusqlite::Statement<'_>, Error> {
+        match &mut self.connection {
+            UnderlyingDbConnection::Connection(conn) => conn.prepare(sql),
+            UnderlyingDbConnection::Savepoint(sp) => sp.prepare(sql),
+        }
+        .map_err(|_| Error::DatabaseError("Error preparing db connection.".to_string()))
     }
 
     pub fn last_insert_rowid(&self) -> i64 {
         self.connection.last_insert_rowid()
     }
 
-    // Only new_transaction still needs special handling
     pub fn new_transaction(&mut self) -> Result<DbConnection<'_>, Error> {
         let sp = match &mut self.connection {
             UnderlyingDbConnection::Connection(conn) => conn.savepoint(),

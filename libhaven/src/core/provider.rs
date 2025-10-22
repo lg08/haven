@@ -31,37 +31,37 @@ pub struct SqliteOpenMlsProvider<'a> {
     pub db_connection: rusqlite::Connection,
 }
 
-impl SqliteOpenMlsProvider {
-    pub fn new(db_path: &str) -> Result<Self> {
-        let connection = rusqlite::Connection::open(db_path)?;
-        let mut storage =
-            openmls_sqlite_storage::SqliteStorageProvider::<JsonCodec, &mut Connection>::new(
-                &mut connection,
-            );
-        storage.run_migrations().expect("Failed to run migrations.");
-        let provider = SqliteOpenMlsProvider {
-            crypto: RustCrypto::default(),
-            key_store: storage,
-            db_connection: connection,
-        };
-        Ok(provider)
-    }
-}
+// impl SqliteOpenMlsProvider {
+// pub fn new(db_path: &str) -> Result<Self> {
+//     let connection = rusqlite::Connection::open(db_path)?;
+//     let mut storage =
+//         openmls_sqlite_storage::SqliteStorageProvider::<JsonCodec, &mut Connection>::new(
+//             &mut connection,
+//         );
+//     storage.run_migrations().expect("Failed to run migrations.");
+//     let provider = SqliteOpenMlsProvider {
+//         crypto: RustCrypto::default(),
+//         key_store: storage,
+//         db_connection: connection,
+//     };
+//     Ok(provider)
+// }
+// }
 
-impl OpenMlsProvider for SqliteOpenMlsProvider {
-    type CryptoProvider = RustCrypto;
-    type RandProvider = RustCrypto;
-    type StorageProvider = SqliteStorageProvider<JsonCodec, Connection>;
+// impl OpenMlsProvider for SqliteOpenMlsProvider {
+//     type CryptoProvider = RustCrypto;
+//     type RandProvider = RustCrypto;
+//     type StorageProvider = SqliteStorageProvider<JsonCodec, Connection>;
 
-    fn storage(&self) -> &Self::StorageProvider {
-        &self.key_store
-    }
+//     fn storage(&self) -> &Self::StorageProvider {
+//         &self.key_store
+//     }
 
-    fn crypto(&self) -> &Self::CryptoProvider {
-        &self.crypto
-    }
+//     fn crypto(&self) -> &Self::CryptoProvider {
+//         &self.crypto
+//     }
 
-    fn rand(&self) -> &Self::RandProvider {
-        &self.crypto
-    }
-}
+//     fn rand(&self) -> &Self::RandProvider {
+//         &self.crypto
+//     }
+// }

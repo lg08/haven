@@ -1,4 +1,4 @@
-use openmls_sqlite_storage::Codec;
+use openmls_sqlite_storage::{db_connection::DbConnection, Codec, SqliteStorageProvider};
 use openmls_traits::storage::{
     traits::{self},
     Entity, Key, StorageProvider,
@@ -46,8 +46,8 @@ fn read_write_delete() {
         .map(|i| Proposal(format!("TestProposal{i}").as_bytes().to_vec()))
         .collect::<Vec<_>>();
     let connection = rusqlite::Connection::open_in_memory().unwrap();
-    let mut storage =
-        openmls_sqlite_storage::SqliteStorageProvider::<JsonCodec, Connection>::new(connection);
+    let db_connection = DbConnection::new(connection);
+    let mut storage = SqliteStorageProvider::<JsonCodec>::new(db_connection);
 
     storage.run_migrations().unwrap();
 
