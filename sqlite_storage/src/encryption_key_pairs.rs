@@ -1,14 +1,13 @@
-use std::marker::PhantomData;
-
-use openmls_traits::storage::{Entity, Key};
-use rusqlite::{params, OptionalExtension};
-
 use crate::{
     codec::Codec,
     wrappers::{EntityRefWrapper, EntityWrapper, KeyRefWrapper},
     STORAGE_PROVIDER_VERSION,
 };
+use openmls_traits::storage::{Entity, Key};
+use rusqlite::{params, OptionalExtension};
+use std::marker::PhantomData;
 
+/// This is just a wrapped up EncryptionKeyPair, saying that it can be stored correctly.
 pub(crate) struct StorableEncryptionKeyPair<EncryptionKeyPair: Entity<STORAGE_PROVIDER_VERSION>>(
     pub EncryptionKeyPair,
 );
